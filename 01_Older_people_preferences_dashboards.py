@@ -7,6 +7,8 @@ import requests
 from PIL import Image
 from io import BytesIO
 from config import GITHUB_PAT
+import os
+from dotenv import load_dotenv
 
 # Page Configuration
 st.set_page_config(
