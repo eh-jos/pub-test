@@ -1,0 +1,10 @@
+streamlit
+plotly>=5.4
+plotly-express
+pandas
+openpyxl
+matplotlib
+xlogit
+scikit-learn
+requests
+pillow

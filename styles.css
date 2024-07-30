@@ -1,0 +1,4 @@
+/* styles.css */
+.streamlit-container > div:first-child {
+    color: #FFFFFF; /* Change this to your desired font color */
+}
