@@ -1,3 +1,4 @@
+# test-app
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -6,34 +7,161 @@ import numpy as np
 import requests
 from PIL import Image
 from io import BytesIO
-from config import GITHUB_PAT
+#from config import GITHUB_PAT
 import os
 from dotenv import load_dotenv
 
-# Page Configuration
+# Load environment variables from .env or app.env file
+load_dotenv()
+
+GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
+GITHUB_USERNAME = os.getenv('GITHUB_USERNAME')
+REPO_NAME = os.getenv('REPO_NAME')
+FILE_PATH = os.getenv('FILE_PATH')
+
+# Function to fetch data from the private GitHub repository
+def fetch_private_data(token, username, repo, path):
+    url = f"https://api.github.com/repos/{username}/{repo}/contents/{path}"
+    headers = {
+        'Authorization': f'token {token}'
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        file_content = response.json()['content']
+        decoded_content = base64.b64decode(file_content)
+        return pd.read_excel(BytesIO(decoded_content))
+    else:
+        st.error("Failed to fetch data.")
+        return None
+
+# Fetch the data
+data = fetch_private_data(GITHUB_TOKEN, GITHUB_USERNAME, REPO_NAME, FILE_PATH)
+
+if data is not None:
+    # Display the data in the Streamlit app
+    st.title("Private Data Dashboard")
+    st.write("Here is your private data:")
+    st.dataframe(data)
+else:
+    st.write("No data to display.")
+
+#Page Configuration
 st.set_page_config(
-    page_title="Older People Preferences Dashboard",
+    page_title="Frequency of choice and sociodemographic characteristics",
     page_icon="⭐️",
     layout="wide",
-    initial_sidebar_state="expanded"
-)
+    initial_sidebar_state="expanded")
+
+# Load the data
+df = pd.read_excel('Cohort2.xlsx')
+
+#re-encodeing
+df['Housing'] = df['Housing'].astype('category').cat.rename_categories(
+    {
+        0: 'Own a home with appropriate adaptation if required',
+        1: 'Family members/friend\'s home',
+        2: 'Retirement village',
+        3: 'Sheltered housing ',
+    }
+    )
+
+df['Location'] = df['Location'].astype('category').cat.rename_categories(
+    {
+        0: 'Remain in current neighbourhood ',
+        1: 'Move to other neighbourhood',
+    }
+    )
+
+df['Provider'] = df['Provider'].astype('category').cat.rename_categories(
+    {
+        0: 'Family members/friends',
+        1: 'Carers arranged by local authority',
+        2: 'Carers arranged using direct payment scheme',
+        3: 'Family members and carers',
+    }
+    )
+df['Identity'] = df['Identity'].astype('category').cat.rename_categories(
+    {
+        0: 'Carer resepcts your beliefs/values-Yes ',
+        1: 'Carer resepcts your beliefs/values-No',
+    }
+    )
+df['Access'] = df['Access'].astype('category').cat.rename_categories(
+    {
+        0: 'Within 10 min access to community services',
+        1: 'Within 20 min access to community services',
+        2: 'Within 30 min access to community services',
+        3: 'More than 30 min access to community services',
+    }
+    )
+
+df['Tecno'] = df['Tecno'].astype('category').cat.rename_categories(
+    {
+        0: 'No use of monitoring technology',
+        1: 'Yes, but only non-wearable sensors',
+        2: 'Yes, including wearable smart devices',
+        3: 'Yes, including cameras',
+    }
+    )
+df['Cost'] = df['Cost'].astype('category').cat.rename_categories(
+    {
+        0: 'Up to £25',
+        1: '£35',
+        2: '£75',
+        3: '£100 or more',
+    }
+    )
+#rename columns
+old_names = ['AGEBAND','D3ethn','D13inc','B3Care_1','B3Care_2','B3Care_3','Housing','Provider','Identity','Access','Tecno','Cost']
+new_names = ['Age','Ethnicity','Income','Experience of care','Current Unpaid Care Receiver','Current Care Provider','Housing setting','Provider of care','Respect for their identity','Access to community services', 'No use of technology devices','Social care cost']
+rename_diction = dict(zip(old_names,new_names))
+df = df.rename(columns=rename_diction)
+
+# Your GitHub username and Personal Access Token
+username = "CareQualityEvaluation"
+token = f"{GITHUB_PAT}"
+
+# The raw URL of your image in the private repository
+repo = "OPFPRU"
+path_to_image = "images/access.png"
+branch = "main"
+url15 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/logo1.png"
+url16 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/logo2.png"
+url17 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/logo3.png"
+url18 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/logo4.png"
+url19 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/logo5.png"
+
+# Make a request to get the image, using the token for authentication
+#logos
+response19 = requests.get(url19, auth=(username, token))
+image19 = Image.open(BytesIO(response19.content))
+response18 = requests.get(url18, auth=(username, token))
+image18 = Image.open(BytesIO(response18.content))
+response17 = requests.get(url17, auth=(username, token))
+image17 = Image.open(BytesIO(response17.content))
+response16 = requests.get(url16, auth=(username, token))
+image16 = Image.open(BytesIO(response16.content))
+response15 = requests.get(url15, auth=(username, token))
+image15 = Image.open(BytesIO(response15.content))
+
 
 with st.sidebar:
     st.markdown("""<style>.big-font {font-size:20px !important;font-weight:bold}</style>""", unsafe_allow_html=True)
-    st.markdown('<p class="big-font">Older people preferences dashboard</p>', unsafe_allow_html=True)
-    st.write(
-        "This tab gives an overview and key messages from the research project. It also provides an overview of the dashboards and what they represent."
-    )
-    with st.popover("More details"):
-        url ='https://www.opfpru.nihr.ac.uk/projects/current-projects/preferences-for-new-models-of-social-care/'
-        link_text = 'here'
-        st.write(f'To know more about the research project please see [{link_text}]({url})')
-        
+    st.markdown('<p class="big-font">Frequency of choice and sociodemographic characteristics: a quick description of what information you can find here.</p>', unsafe_allow_html=True)
+    st.write('The upper part of the tab, provides you information on the population of 1820 individuals who completed the DCE survey and provided full data for analysis:')
+    text = """
+    * Frequency of choice: This dashboard presents an overview of the frequency breakdown of survey respondents' care attribute (or characteristic) preferences. It details how often each care attribute’s level was selected. 
+
+    * Sociodemographic of the population: This dashboard presents an overview of the demographic breakdown of the total survey population. 
+    """
+    st.write(text)
+    st.write("""
+    The lower section of the tab offers subgroup analysis based on sociodemographic characteristics. It presents data on the frequency of service characteristic choices previously selected. This data indicates how often each level of care attribute was chosen within specific subgroups of the population, based on the demographic aspects selected earlier.
+    """)
     st.write("© Michela Tinelli, LSE 2024")
     st.write("All rights reserved")
-
+    
 #CSS Customization
-
 
 main_id = "stApp"
 sidebar_header_id = "stSidebarHeader"
@@ -52,236 +180,305 @@ st.markdown(sidebar_header_style, unsafe_allow_html=True)
 st.markdown(sidebar_nav_style, unsafe_allow_html=True)    
 st.markdown(sidebar_style, unsafe_allow_html=True)
 st.markdown(sidebar_popover_style, unsafe_allow_html= True)   
-st.markdown(expander_style, unsafe_allow_html= True)                                                             
+st.markdown(expander_style, unsafe_allow_html= True)
+                                                            
+# Frequency Breakdown Pie Chart
+def makepie_figure (selected_attribute):
+    colors = ['#FFD400','#2FC0BA','#64285D','#00636A']
+    frequency = df[selected_attribute].value_counts().reset_index()
+    frequency.columns = ['Labels', 'Frequency']
+    pie_chart = go.Figure(data = [go.Pie(labels=frequency['Labels'], values=frequency['Frequency'])])
 
-# Your GitHub username and Personal Access Token
-username = "CareQualityEvaluation"
-token = f"{GITHUB_PAT}"
+    pie_chart.update_traces(marker=dict(colors=colors,line=dict(color='#000000',width=2)))
+    return pie_chart
+    
+#Static Histograms
+def static_histogram_figure(input_df,demch_column):
+    
+    histogram_chart = px.histogram(input_df, x = input_df[demch_column],histnorm ='percent')
+    histogram_chart.update_traces(marker_color='teal')
+    histogram_chart.update_layout(title = demch_column, 
+                                  yaxis_title="Percentage",
+                                  bargap=.2, 
+                                  xaxis=dict(titlefont=dict(size=20)),
+                                  yaxis=dict(titlefont=dict(size=20)))
+    return histogram_chart
 
-# The raw URL of your image in the private repository
-repo = "OPFPRU"
-path_to_image = "images/access.png"
-branch = "main"
+    
+#Subgroup Histograms
+df['Gender'] = df['Gender'].apply(lambda x: "Female" if x == 2 else "non-Female")
+df['Ethnicity'] = df['Ethnicity'].apply(lambda x: 'White British' if x in [1] else ('Indian' if x in [9] else ('Irish' if x in [2] else ('Other White' if x in [4] else ('African' if x in [14] else ('Chinese' if x in [12] else ('Caribbean' if x in [15] else ('Prefer not to say' if x in [19,20] else ('Other' if x in [3, 16, 11, 17, 18, 6, 8, 13, 7, 10, 5] else x)))))))))
+df['Income'] = df['Income'].apply(lambda x: 'Low' if x in [1, 2, 3] else ('Med' if x in [4, 5, 6, 7] else ('High' if x in [8, 9, 10, 11] else ('Prefer not to say' if x == 12 else x))))
+df['Age'] = df['Age'].apply(lambda x: '50-59' if x in [5] else ('60-69' if x in [6] else ('70-79' if x in [7] else ('80+' if x in [8,9] else ('Prefer not to say' if x ==997 else x)))))
+df['Experience of care'] = df['Experience of care'].apply(lambda x: 'Yes' if x in [1] else ('No' if x in [2] else ('Unknown' if x in [3] else ('Prefer not to say' if x == 4 else x))))
+df['Current Unpaid Care Receiver'] = df['Current Unpaid Care Receiver'].apply(lambda x: 'Yes' if x in [1] else ('No' if x in [2] else ('Unknown' if x in [3] else ('Prefer not to say' if x == 4 else x))))
+df['Current Care Provider'] = df['Current Care Provider'].apply(lambda x: 'Yes' if x in [1] else ('No' if x in [2] else ('Unknown' if x in [3] else ('Prefer not to say' if x == 4 else x))))
 
-# Construct the URL
-url = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/access.png"
-url2 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/cost.png"
-url3 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/provider.png"
-url4 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/housing.png"
-url5 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/identity.png"
-url6 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/location.png"
-url7 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/tech.png"
-url8 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/elder1.png"
-url9 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/elder2.png"
-url10 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/chart1.png"
-url11 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/chart2.png"
-url12 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/chart3.png"
-url13 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/chart4.png"
-url14 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/relaxing-at-home.png"
-url15 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/logo1.png"
-url16 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/logo2.png"
-url17 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/logo3.png"
-url18 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/logo4.png"
-url19 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/logo5.png"
-url20 = f"https://raw.githubusercontent.com/CareQualityEvaluation/OPFPRU/main/images/Picture2.png"
-# Make a request to get the image, using the token for authentication
-#logos
-response19 = requests.get(url19, auth=(username, token))
-image19 = Image.open(BytesIO(response19.content))
-response18 = requests.get(url18, auth=(username, token))
-image18 = Image.open(BytesIO(response18.content))
-response17 = requests.get(url17, auth=(username, token))
-image17 = Image.open(BytesIO(response17.content))
-response16 = requests.get(url16, auth=(username, token))
-image16 = Image.open(BytesIO(response16.content))
+def sub_histogram_figure_gender (input_filtered_df_gender,selected_attribute):
+    color_discrete_map = {
+        "Yes": "#2FC0BA",  
+        "No": "#00636A",
+        "Unknown": "#64285D",
+        "Prefer not to say": "#FFD400",
+        "Low": "#2FC0BA", 
+        "Med": "#00636A", 
+        "High": "#64285D", 
+        "50-59": "#2FC0BA",
+        "60-69": "#00636A", 
+        "70-79": "#64285D", 
+        "80+": "#FFD400"
+    }
+    
+    histogram_chart = px.histogram(input_filtered_df_gender, 
+                                   x = selected_attribute,
+                                   histnorm ='percent',
+                                   color=selected_demch, 
+                                   barmode='group', 
+                                   color_discrete_map=color_discrete_map) 
 
-response15 = requests.get(url15, auth=(username, token))
-image15 = Image.open(BytesIO(response15.content))
+    histogram_chart.update_layout(title = 'Sub Group '+selected_demch, 
+                                  yaxis_title="Percentage",
+                                  xaxis_title = str(selected_attribute),
+                                  bargap=.2,
+                                  xaxis_range =[-1,5],
+                                  xaxis=dict(titlefont=dict(size=20)),
+                                  yaxis=dict(titlefont=dict(size=20)))
+    return histogram_chart
 
-#header image
-response14 = requests.get(url14, auth=(username, token))
-image14 = Image.open(BytesIO(response14.content))
-response20 = requests.get(url20, auth=(username, token))
-image20 = Image.open(BytesIO(response20.content))
+ 
+#Layout
 
-#icons
-response = requests.get(url, auth=(username, token))
-image = Image.open(BytesIO(response.content))
-
-response2 = requests.get(url2, auth=(username, token))
-image2 = Image.open(BytesIO(response2.content))
-
-response3 = requests.get(url3, auth=(username, token))
-image3 = Image.open(BytesIO(response3.content))
-
-response4 = requests.get(url4, auth=(username, token))
-image4 = Image.open(BytesIO(response4.content))
-
-response5 = requests.get(url5, auth=(username, token))
-image5 = Image.open(BytesIO(response5.content))
-
-response6 = requests.get(url6, auth=(username, token))
-image6 = Image.open(BytesIO(response6.content))
-
-response7 = requests.get(url7, auth=(username, token))
-image7 = Image.open(BytesIO(response7.content))
-
-response8 = requests.get(url8, auth=(username, token))
-image8 = Image.open(BytesIO(response8.content))
-
-response9 = requests.get(url9, auth=(username, token))
-image9 = Image.open(BytesIO(response9.content))
-
-response10 = requests.get(url10, auth=(username, token))
-image10 = Image.open(BytesIO(response10.content))
-
-response11 = requests.get(url11, auth=(username, token))
-image11 = Image.open(BytesIO(response11.content))
-
-response12 = requests.get(url12, auth=(username, token))
-image12 = Image.open(BytesIO(response12.content))
-
-response13 = requests.get(url13, auth=(username, token))
-image13 = Image.open(BytesIO(response13.content))
-
-# Layout
 # Create containers
 container1 = st.container(border = True)
 container2 = st.container(border = True)
 container3 = st.container(border = True)
 
 with container1:
-    st.markdown("""<style>.big-title-font {font-size:28px !important;font-weight: bold;}</style>""", unsafe_allow_html=True)
-    st.markdown('<p class="big-title-font">Preferences and willingness to pay for new models of social care for older people with high care needs in England</p>', unsafe_allow_html=True)
+    col1,col2 = st.columns([1,1])  # Create two columns with 1:1 width
 
-    
+    with col1:
+        st.markdown("""<style>.big-key-font {font-size:26px !important;font-weight: bold;}</style>""", unsafe_allow_html=True)
+        st.markdown('<p class="big-key-font">Frequency of choice for the overall population (n= 1820)</p>', unsafe_allow_html=True)
+        characteristics_explain={'Characteristics': ['Housing setting', 'Location', 'Provider of care','Respect for their identity','Access to community services ','No use of technology devices','Social care cost to the service user'],
+        'Possible values ':['Own home with appropriate adaptation if required. Compared with other options (such as family member of friend’s home, retirement village or sheltered housing).',
+                        'Staying in the same neighbourhood (compared with moving elsewhere).',
+                        'Provider 1 = Receiving support from carers arranged by your local authority; Provider 2 = From carers arranged by you using a direct payment scheme or your own resources; Provider 3 = From both family members and carers (type of arrangement may vary). (Compared with receiving support from either family members or friends only).', 
+                        'Receiving care from someone that respect your beliefs and values (compared with no respect for their identity).',
+                        'Walking distance from community services in minutes.',
+                        'No use of technology devices. Compared with use of technology: Yes, but only non-wearable sensors such as pressure mats or smoke alarm; Yes, including wearable devices to monitor vital signs such as smart watches; Yes, including cameras to monitor home environment.', 
+                        'In £ per week. Please note that the possible values of weekly costs were illustrative. The actual cost to the service user would vary depending on where the person lives, and on their income and savings, since public funding of adult social care is means tested.']}
 
-    st.write("---")
-    st.empty()
-
-    st.markdown("""<style>.big-key-font {font-size:26px !important;font-weight: bold;}</style>""", unsafe_allow_html=True)
-    st.markdown('<p class="big-key-font">Background of the research project</p>', unsafe_allow_html=True)
-
-    st.write(
-        "The objective of our study was to understand how preferences from different components of care are shaped by individual demographic, socioeconomic and needs-related factors. Building on evidence from the first phase of our study – where we gathered insights from previous research and a series of focus groups – we conducted a survey to understand variations in preferences."
-    )
-    st.write("We recruited a sample of people aged 50 years or older living in England, drawn from the general population, with the help of a survey agency. The survey included general questions about preferences relating to care and support. Specific questions formed a discrete choice experiment (DCE) to explore how participants would trade-off different features of social care arrangements when thinking about their own (current or future) circumstances, if they were to have high care needs.")
-    
-    with st.popover("More details on DCE"):
-        url = 'https://eprints.lse.ac.uk/73723/1/Tinelli_Applying%20discrete%20social%20experiments%20in%20social%20care%20research_published_2016%20LSERO.pdf'
-        link_text = 'More about DCE, click here'
-        st.write('DCEs are used in health services research, particularly by health economists, but have seldom been applied to social care studies. They enable researchers to measure the strength of preferences between alternative scenarios or types of service provision (9). Each alternative is described by several attributes or components of care. Survey participants are invited to choose between different models of care, each described in terms of those attributes. Participants’ choices indicate how their preferences are influenced by, and the relative importance they attach to, each attribute. A DCE thus provides a measure of the relative value attached to the different alternatives. It also provides information on how much individuals are willing to accept compromises in some attributes to gain more of other attributes that they value.  Details about the questionnaire can be requested contacting the team (m.tinelli@lse.ac.uk)')
-        st.write(f'[{link_text}]({url})')
-
-    st.markdown("""
-        The visualisations listed below describe key findings from the DCE questions. 
-        <a href='#section-collection-of-dashboards' class='jump-link'>Click here to jump to Collection of Dashboards</a>
-        <script>
-            // Add smooth scrolling to all links
-            document.querySelectorAll('a.jump-link').forEach(anchor => {
-                anchor.onclick = function (e) {
-                    e.preventDefault();
-                    document.querySelector(this.getAttribute('href')).scrollIntoView({
-                        behavior: 'smooth'
-                    });
-                };
-            });
-        </script>
-        """, unsafe_allow_html=True)
-
-    st.empty()
-    st.write("---")
-
-custom_css_key_findings = """
-    <style>
-    .my-container {
-     background-color: #d6f5f3;
-     padding: 20px; border: 3px solid #08636B
-     border-radius: 10px;
-    }
-    </style>
-    """
-
-with container2:
-
- 
-    #Display the image in Streamlit
-    st.image(image14, use_column_width = True)
-
-
-    st.markdown("""<style>.big-key-font {font-size:26px !important;font-weight: bold;}</style>""", unsafe_allow_html=True)
-    st.markdown('<p class="big-key-font">Key findings from the DCE questions</p>', unsafe_allow_html=True)
-    st.markdown(custom_css_key_findings, unsafe_allow_html=True)
-    # Use the custom class in a container
-    st.markdown('<div class="my-container">Housing setting, provider of care, identity, use of technology devices, access to community services, and costs of care significantly influence decisions between different care options. The main factor influencing people’s choice is who provides support with the care task (preferred option: receiving support from carers arranged by the local authority), followed (in order of importance) by receiving care from someone who respects their beliefs and values, housing setting (preferred option: own home with appropriate adaptation if required), not using technology devices, lower weekly cost, and closer access to community facilities. Participants were willing to pay a substantial amount (over £100 per week indicatively) or to live beyond walking distance (over 30-minute walk) to receive care from family members or friends (only) rather than receiving support from carers arranged by their local authority.</div>', unsafe_allow_html=True)
-
-
-    with st.expander("Key findings according to different sociodemographic groups"):
-        text = '''
-        * **Comparison by Age:** Older people have stronger preferences than younger people (within our sample of people aged 50+) for living in their own homes with appropriate adaptations if required and for not using technology. In contrast, their preferences are likely to be less strong for: receiving care from other options beyond family members or friends; receiving care from someone who respects their beliefs and values; and access to community services. Younger participants are willing to pay to receive care from a source other than their preferred carer or to receive care from someone who respects their beliefs, but they are not willing to accept longer walking times to local amenities for these same changes. For the other attributes, the age group willing to pay more is also willing to accept longer walking times.
-    
-        * **Comparison by Income:** Trends in data showed that the higher the income group, the greater the likelihood that individuals would be willing to pay more for receiving care from someone who respects their beliefs and values, as opposed to not having this characteristic; for receiving support from both family members and carers (or other carer arrangements), in contrast to relying solely on family members or friends; and for living in their own home with appropriate adaptations if needed, compared to considering other options. Individuals in higher income groups expressed a marginal preference to relocate to another neighborhood or city, as opposed to continuing to reside in their current neighborhood. Conversely, those in low-to-medium income groups expressed a slight preference to stay in their current neighborhood compared to moving to another neighborhood or city. Moreover, individuals in higher income groups demonstrate a lower likelihood of selecting a care model without technology when compared to individuals in other income groups. However, the willingness to pay (WTP) to live closer to community services is consistent across all income groups.
-    
-        * **Comparison by Experience of Care:** Individuals with experience of care are likely to value slightly more any other care arrangement (compared with relying solely on family members or friends), with people willing to pay more to receive support from carers arranged by the local authority (compared to care by family members or friends only). However, the direction of the results was opposite when we consider willingness to accept longer walking times (AWD): those with experience of care are less willing to walk further to local amenities for the same change. Other preferences are comparable across groups, using both WTP and AWD metrics.
-        '''
-        st.write(text)
-    
-
-with container3:
-    st.markdown("""<style>.big-key-font {font-size:26px !important;font-weight: bold;}</style>""", unsafe_allow_html=True)
-    #st.markdown('<p class="big-key-font">Collection of dashboards</p>', unsafe_allow_html=True)
-
-    st.markdown('<p id="section-collection-of-dashboards" class="big-key-font">Collection of dashboards</p>', unsafe_allow_html=True)
-
-    st.write(
-        "This collection of dashboards was produced using Streamlit to enhance comprehension and interpretation of the DCE findings and to explore data in a more engaging and insightful way.")
-    with st.popover("More details on Streamlit"):
-        st.write("https://streamlit.io/ is an open-source Python library that makes it easy to create and share custom web applications for machine learning and data science.")        
+        df_characteristics_explain = pd.DataFrame(characteristics_explain)
         
-    st.write("\n\nThe dashboards include four separate sets of visualizations:")
-    st.page_link("pages/02_Frequency of choice and sociodemographic characteristics.py", label="**Demographic characteristics and frequency of choice:**", icon="1️⃣")
-    st.write("\n\n Interactive bar charts and pie charts illustrating the demographic profile of respondents and how frequently different choices were made.")
-    st.page_link("pages/03_Strength of preference for care characteristics.py", label="**Strength of preferences between service characteristics:**", icon="2️⃣")
-    st.write("\n\n Interactive bar charts illustrating the relative importance and strength of preferences for various service characteristics.")
-    st.page_link("pages/04_Trade-off between care characteristics.py", label="**Trade-off between characteristics:**", icon="3️⃣")
-    st.write("\n\n Interactive bar charts showing how respondents trade-off between different service characteristics.")
-    st.page_link("pages/05_Probability of people using different care options.py", label="**Service uptake probability:**", icon="4️⃣")
-    st.write("\n\n More visualizations predicting the likelihood of service uptake based on the analyzed DCE data."
-    )
-    st.empty()
+        st.write("First choose a characteristic of care from the dropdown menu below to visualise its distribution among the population. Full details are provided here")
     
+        with st.popover("Characteristics of care"):
+            st.write("Care provision scenarios were described according the following characteristics and assigned possible values.")
+            st.dataframe(df_characteristics_explain,hide_index=True)
+            st.write("Please note that for housing, we combined all other options different from your own home into one category, as the individual alternatives were not statistically significant. The same applied to use of technology devices. Access to community services and social care costs to the service user were considered as continuous variables.")
+            
+        attributes_list = ["Housing setting", "Location", "Provider of care", "Respect for their identity", "Access to community services", "No use of technology devices", "Social care cost"]
+        selected_attribute = st.selectbox('Select a preference characteristic', attributes_list,
+                                          index=len(attributes_list) - 1)
+        pie_chart = makepie_figure(selected_attribute)
+        st.plotly_chart(pie_chart, use_container_width=True)
+
+
     
-    st.write("---")
-    st.markdown("""<style>.big-key-font {font-size:26px !important;font-weight: bold;}</style>""", unsafe_allow_html=True)
-    st.markdown('<p class="big-key-font">The team</p>', unsafe_allow_html=True)
+    with col2:  
+        st.write("")
+        st.markdown('<p class="big-key-font">Demographics of the total group (n= 1820)</p>', unsafe_allow_html=True)
+        # demographic choice selector
+        
+        st.write("Then select a sociodemographic feature from the dropdown menu below to visualise the distribution of population percentages. Full details are provided here")
+        
+        subgroup_explain={'Characteristic': ['Age', 'Income', 'Experience of care'],
+        'Subgroups compared':['Total number of respondents are divided into four age groups: 50-60, 60-70-,70-80 and 80+.','Total number of respondents are divided into three household income groups: low (≤ £30,000 per year), middle (£30,001-70,000 per year), and high (≥ £70,000 per year) income.', 'Total number of respondents are divided into two groups based on their previous experience of whether they were receiving care support or not: care user and no care user']}
+        df_subgroup_explain = pd.DataFrame(subgroup_explain)
+    
+        with st.popover("Sociodemographic features"):
+            st.write("Sociodemographic features considered are listed below.")
+            st.dataframe(df_subgroup_explain,hide_index=True)
+
+        demch_list = ["Age", "Income", "Experience of care"]
+        selected_demch = st.selectbox('Select a demographic characteristic', demch_list, index=len(demch_list) - 1)
+        if selected_demch == "Age":
+            df = df.sort_values(by='Age', ascending=True)
+        elif selected_demch == "Income":
+            df['Income'] = pd.Categorical(df['Income'],
+                                          categories=['Low', 'Med', 'High', 'Unknown', 'Prefer not to say'])
+            df = df.sort_values(by='Income', ascending=True)
+        elif selected_demch == "Experience of care":
+            df['Experience of care'] = pd.Categorical(df['Experience of care'],
+                                                      categories=['Yes', 'No', 'Unknown', 'Prefer not to say'])
+            df = df.sort_values(by='Experience of care', ascending=True)
+        else:
+            pass
+
+        histogram_1 = static_histogram_figure(df, selected_demch)
+        st.plotly_chart(histogram_1, width=30, height=30)
+        
+with container2:
+    col1, col2 = st.columns(2)  # Create two columns with equal width
+
+    with col1:
+        st.markdown('<p class="big-key-font">Frequency of choice according to subgroups</p>', unsafe_allow_html=True)
+        st.write("Based on the care characteristic and demographic characteristic selected above, the following visualisation shows how often each care characteristic is chosen (percentage) within the selected sociodemographic groups.") 
+        df = df.sort_values(by=selected_attribute,ascending=True)
+        filtered_df = df[[selected_attribute, selected_demch]]
+        if selected_demch =='Experience of care':
+            filtered_df2 = filtered_df[filtered_df['Experience of care'].isin(['Yes', 'No'])]
+            st.write("<p style='font-size:12px;'>Please note that respondents who answered ‘prefer not to say’ or ‘unknown’ were excluded from the analysis, as they accounted for less than 1% of the total responses.", unsafe_allow_html=True)
+        elif selected_demch =='Age':
+            filtered_df2 = filtered_df[filtered_df['Age'].isin(['50-59', '60-69', '70-79','80+'])]
+            st.write("<p style='font-size:12px;'>Please note that respondents who answered ‘prefer not to say’ or ‘unknown’ were excluded from the analysis, as they accounted for less than 1% of the total responses.", unsafe_allow_html=True)
+        else:
+            filtered_df2 = filtered_df[filtered_df['Income'].isin(['Low','Med','High', 'Unknown', 'Prefer not to say'])]
+        
+        #st.dataframe(filtered_df2)
+        histogram_5 = sub_histogram_figure_gender(filtered_df2, selected_attribute)
+        st.plotly_chart(histogram_5, use_container_width=True, width=30, height=30)
+
+# custom_css_key_findings = """
+#     <style>
+#     .my-container {
+#      background-color: #d6f5f3;
+#      padding: 20px; border: 3px solid #08636B
+#      border-radius: 10px;
+#     }
+#     </style>
+#     """
 
 
-    st.write(
-        "Authors of the research: Magdalena Walbaum, Michela Tinelli, Martin Knapp, and Raphael Wittenberg, Care Policy Evaluation Centre (CPEC) at the LSE.\n\nAuthors of the visualizations: Michela Tinelli, Eha Joshi, and Vencky Sharma, CPEC at the LSE."
-    )
-    st.empty()
-    st.write("---")
+#     st.markdown("""<style>.big-key-font {font-size:26px !important;font-weight: bold;}</style>""", unsafe_allow_html=True)
+#     st.markdown('<p class="big-key-font">Key Findings from the DCE Questions.</p>', unsafe_allow_html=True)
+#     st.markdown(custom_css_key_findings, unsafe_allow_html=True)
+#     # Use the custom class in a container
+#     st.markdown('<div class="my-container">.</div>', unsafe_allow_html=True)
+    with col2:
+        custom_css_key_findings = """
+        <style>
+        .my-container {
+         background-color: #d6f5f3;
+         padding: 20px; border: 30px solid #c1f0ee
+         border-radius: 10px;
+        }
+        </style>
+        """
+        st.markdown('<p class="big-key-font">Key messages</p>', unsafe_allow_html=True)
+        st.markdown(custom_css_key_findings, unsafe_allow_html=True)
+        st.markdown('<div class="my-container">This tab provides a comprehensive look at who the survey respondents are, what care attributes (or characteristic) they prioritise, and how these preferences vary across different demographic groups. By leveraging this data, you can better understand the needs and preferences of different segments of the population, allowing for more targeted and effective decision-making.</div>', unsafe_allow_html = True)
+        if selected_attribute == 'Housing setting' and selected_demch == "Age":
+            # Display additional text specific to sub-options
+            st.markdown('''**:green-background[Total population analysis:]** :green-background[Respondents mostly chose to either live in a retirement village or in sheltered housing. There are nearly equal number of respondents who chose to live in a family member or friend’s home or live in their own a home with appropriate adaption if required.]''')
+            st.markdown('<div class="my-container">Subgroup Analysis by age groups: Comparable results were observed across all age subgroups.', unsafe_allow_html = True)
+        elif selected_attribute == 'Location' and selected_demch == "Age":
+            # Display additional text specific to sub-options
+            st.markdown('<div class="my-container">Total population analysis: More than half of all respondents chose to remain in their current neighbourhood', unsafe_allow_html = True)
+            st.write("**Subgroup Analysis by age groups:** Comparable results were observed across all age subgroups.")
+        elif selected_attribute == 'Provider of care' and selected_demch == "Age":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** The greatest number of respondents chose to have either a family member as a care provider or a carer that is arrange by the local authorities. Secondly, there are equal number of respondents that chose to have their care provider be arrange by local authority and respondents that chose to have their care provider be family members/friends. Lastly, the least number of respondents chose to arrange their own care providers using direct payment schemes.")
+            st.write("**Subgroup Analysis by age groups:** Comparable results were observed across all age subgroups.")        
+        elif selected_attribute == 'Respect for their identity' and selected_demch == "Age":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** More than half of all respondents chose to have a carer that respects their values and beliefs.")
+            st.write("**Subgroup Analysis by age groups:** Comparable results were observed across all age subgroups.")        
+        elif selected_attribute == 'Access to community services' and selected_demch == "Age":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** Most respondents opted to live within a 10-minute walking distance from community services. Other options were chosen equally.")
+            st.write("**Subgroup Analysis by age groups:** Comparable results were observed across all age subgroups.")               
+        elif selected_attribute == 'No use of technology devices' and selected_demch == "Age":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** Most respondents opted for no use of monitoring technology. Other options (monitoring technology types) were equally chosen.")
+            st.write("**Subgroup Analysis by age groups:** Comparable results were observed across all age subgroups.")        
+        elif selected_attribute == 'Social care cost' and selected_demch == "Age":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** The highest number of respondents chose to pay the highest costs per week.")
+            st.write("**Subgroup Analysis by age groups:** Comparable results were observed across all age subgroups.") 
+        else:
+            st.write ("")
 
-    st.markdown("""<style>.big-key-font {font-size:26px !important;font-weight: bold;}</style>""", unsafe_allow_html=True)
-    st.markdown('<p class="big-key-font">Disclaimer</p>', unsafe_allow_html=True)
+        if selected_attribute == 'Housing setting' and selected_demch == "Income":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** Respondents mostly chose to either live in a retirement village or in sheltered housing. There are nearly equal number of respondents who chose to live in a family member or friend’s home or live in their own a home with appropriate adaption if required.")
+            st.write("**Subgroup Analysis by income groups:** Comparable results were observed across all three income subgroups.")
+        elif selected_attribute == 'Location' and selected_demch == "Income":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** More than half of all respondents chose to remain in their current neighbourhood.")
+            st.write("**Subgroup Analysis by income groups:** Comparable results were observed across all three income subgroups.")
+        elif selected_attribute == 'Provider of care' and selected_demch == "Income":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** The greatest number of respondents chose to have either a family member as a care provider or a carer that is arrange by the local authorities. Secondly, there are equal number of respondents that chose to have their care provider be arrange by local authority and respondents that chose to have their care provider be family members/friends. Lastly, the least number of respondents chose to arrange their own care providers using direct payment schemes.")
+            st.write("**Subgroup Analysis by income groups:** Comparable results were observed across all three income subgroups.")        
+        elif selected_attribute == 'Respect for their identity' and selected_demch == "Income":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** More than half of all respondents chose to have a carer that respects their values and beliefs.")
+            st.write("**Subgroup Analysis by income groups:** Comparable results were observed across all three income subgroups.")        
+        elif selected_attribute == 'Access to community services' and selected_demch == "Income":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** Most respondents opted to live within a 10-minute walking distance from community services. Other options were chosen equally.")
+            st.write("**Subgroup Analysis by income groups:** Comparable results were observed across all three income subgroups.")               
+        elif selected_attribute == 'No use of technology devices' and selected_demch == "Income":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** Most respondents opted for no use of monitoring technology. Other options (monitoring technology types) were equally chosen.")
+            st.write("**Subgroup Analysis by income groups:** Comparable results were observed across all three income subgroups.")        
+        elif selected_attribute == 'Social care cost' and selected_demch == "Income":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** The highest number of respondents chose to pay the highest costs per week.")
+            st.write("**Subgroup Analysis by income groups:** Comparable results were observed across all three income subgroups.") 
+        else:
+            st.write ("")
 
-    st.write(
-        "Please note that this research was funded through the National Institute for Health and Care Research (NIHR) Policy Research Unit in Older People and Frailty (funding reference PR-PRU-1217-2150). As of 01.01.24, the unit has been renamed to the NIHR Policy Research Unit in Healthy Ageing (funding reference NIHR206119). The views expressed are those of the author(s) and not necessarily those of the NIHR or the Department of Health and Social Care."
-    )
-    st.empty()
+        if selected_attribute == 'Housing setting' and selected_demch == "Experience of care":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** Respondents mostly chose to either live in a retirement village or in sheltered housing. There are nearly equal number of respondents who chose to live in a family member or friend’s home or live in their own a home with appropriate adaption if required.")
+            st.write("**Subgroup Analysis by experience of care:** Comparable results were observed across all subgroups.")
+        elif selected_attribute == 'Location' and selected_demch == "Experience of care":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** More than half of all respondents chose to remain in their current neighbourhood.")
+            st.write("**Subgroup Analysis by experience of care:** Comparable results were observed across all subgroups.")
+        elif selected_attribute == 'Provider of care' and selected_demch == "Experience of care":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** The greatest number of respondents chose to have either a family member as a care provider or a carer that is arrange by the local authorities. Secondly, there are equal number of respondents that chose to have their care provider be arrange by local authority and respondents that chose to have their care provider be family members/friends. Lastly, the least number of respondents chose to arrange their own care providers using direct payment schemes.")
+            st.write("**Subgroup Analysis by experience of care:** Comparable results were observed across all subgroups.")        
+        elif selected_attribute == 'Respect for their identity' and selected_demch == "Experience of care":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** More than half of all respondents chose to have a carer that respects their values and beliefs.")
+            st.write("**Subgroup Analysis by experience of care:** Comparable results were observed across all subgroups.")        
+        elif selected_attribute == 'Access to community services' and selected_demch == "Experience of care":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** Most respondents opted to live within a 10-minute walking distance from community services. Other options were chosen equally.")
+            st.write("**Subgroup Analysis by experience of care:** Comparable results were observed across all subgroups.")               
+        elif selected_attribute == 'No use of technology devices' and selected_demch == "Experience of care":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** Most respondents opted for no use of monitoring technology. Other options (monitoring technology types) were equally chosen.")
+            st.write("**Subgroup Analysis by experience of care:** Comparable results were observed across all subgroups.")        
+        elif selected_attribute == 'Social care cost' and selected_demch == "Experience of care":
+            # Display additional text specific to sub-options
+            st.write("**Total population analysis:** The highest number of respondents chose to pay the highest costs per week.")
+            st.write("**Subgroup Analysis by experience of care:** Comparable results were observed across all subgroups.") 
+        else:
+            st.write ("")
+
+        
+
+with container3: 
     col1,col2,col3,col4, col5 = st.columns([1,1,1,1,1])
         #images
     with col1: 
         #Display the image in Streamlit
-        st.image(image15, use_column_width=True)
+        #st.image(image15, use_column_width=True)
+        st.write("")
     with col2:
-        st.image(image16, use_column_width=True)
+        #st.image(image16, use_column_width=True)
+        st.write("")
     with col3:
-        st.image(image17, use_column_width=True)
+        #st.image(image17, use_column_width=True)
+        st.write("")
     with col4:
-        st.image(image18, use_column_width=True)
+        #st.image(image18, use_column_width=True)
+        st.write("")
     with col5:
         st.image(image19, use_column_width=True)
-    
-
-
+        
